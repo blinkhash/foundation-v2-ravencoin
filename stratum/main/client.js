@@ -1,3 +1,4 @@
+const Algorithms = require('../../stratum/main/algorithms');
 const events = require('events');
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,11 +178,19 @@ const Client = function(config, socket, id, authorizeFn) {
     _this.previousDifficulty = _this.difficulty;
     _this.difficulty = difficulty;
 
+    // Pad Difficulty to Broadcast
+    let zeroPad = '';
+    const adjPow = Algorithms.kawpow.diff / _this.difficulty;
+    if ((64 - adjPow.toString(16).length) !== 0) {
+      zeroPad = '0';
+      zeroPad = zeroPad.repeat((64 - (adjPow.toString(16).length)));
+    }
+
     // Process Algorithm Difficulty
     _this.sendJson({
       id: null,
-      method: 'mining.set_difficulty',
-      params: [difficulty],
+      method: 'mining.set_target',
+      params: [(zeroPad + adjPow.toString(16)).substr(0, 64)],
     });
 
     // Difficulty Updated Correctly
@@ -207,7 +216,16 @@ const Client = function(config, socket, id, authorizeFn) {
       _this.pendingDifficulty = null;
     }
 
+    // Pad Difficulty to Broadcast
+    let zeroPad = '';
+    const adjPow = Algorithms.kawpow.diff / _this.difficulty;
+    if ((64 - adjPow.toString(16).length) !== 0) {
+      zeroPad = '0';
+      zeroPad = zeroPad.repeat((64 - (adjPow.toString(16).length)));
+    }
+
     // Broadcast Mining Job to Client
+    parameters[3] = (zeroPad + adjPow.toString(16)).substr(0, 64);
     _this.sendJson({
       id: null,
       method: 'mining.notify',
@@ -219,7 +237,7 @@ const Client = function(config, socket, id, authorizeFn) {
   this.handleSubscribe = function(message) {
 
     // Emit Subscription Event
-    _this.emit('client.subscription', {}, (error, extraNonce1, extraNonce2Size) => {
+    _this.emit('client.subscription', {}, (error, extraNonce1) => {
       if (error) {
         _this.sendJson({ id: message.id, result: null, error: error });
         return;
@@ -229,11 +247,7 @@ const Client = function(config, socket, id, authorizeFn) {
       _this.extraNonce1 = extraNonce1;
       _this.sendJson({
         id: message.id,
-        result: [[
-          ['mining.set_difficulty', _this.id],
-          ['mining.notify', _this.id]],
-        extraNonce1,
-        extraNonce2Size],
+        result: [null, extraNonce1],
         error: null
       });
     });
@@ -285,31 +299,22 @@ const Client = function(config, socket, id, authorizeFn) {
     _this.sendJson({
       id: message.id,
       result: {
-        'version-rolling': true,
-        'version-rolling.mask': '1fffe000'
+        'version-rolling': false
       },
       error: null
     });
 
     // Update Version Mask
-    _this.asicboost = true;
-    _this.versionMask = '1fffe000';
+    _this.asicboost = false;
+    _this.versionMask = '00000000';
   };
 
   // Manage Stratum Multi-Versions
-  this.handleMultiVersion = function(message) {
+  this.handleMultiVersion = function() {
 
-    // Parse Version of Coin
-    const mVersion = parseInt(message.params[0]);
-
-    // Check if AsicBoost is Supported
-    if (mVersion > 1) {
-      _this.asicboost = true;
-      _this.versionMask = '1fffe000';
-    } else {
-      _this.asicboost = false;
-      _this.versionMask = '00000000';
-    }
+    // AsicBoost is Not Supported
+    _this.asicboost = false;
+    _this.versionMask = '00000000';
   };
 
   // Manage Stratum Submission

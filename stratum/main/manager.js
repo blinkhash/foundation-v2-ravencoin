@@ -19,8 +19,8 @@ const Manager = function(config, configMain) {
   this.currentJob = null;
 
   // ExtraNonce Variables
-  this.extraNonceCounter = utils.extraNonceCounter(4);
-  this.extraNoncePlaceholder = Buffer.from('f000000ff111111f', 'hex');
+  this.extraNonceCounter = utils.extraNonceCounter(2);
+  this.extraNoncePlaceholder = Buffer.from('f000', 'hex');
   this.extraNonce2Size = _this.extraNoncePlaceholder.length - _this.extraNonceCounter.size;
 
   // Check if New Block is Processed
@@ -57,11 +57,10 @@ const Manager = function(config, configMain) {
 
     // Main Submission Variables
     const identifier = _this.configMain.identifier || '';
-    const submitTime = Date.now() / 1000 | 0;
     const job = _this.validJobs[jobId];
-    const nTimeInt = parseInt(submission.nTime, 16);
 
     // Establish Hashing Algorithms
+    const hashDigest = Algorithms.kawpow.hash();
     const headerDigest = Algorithms.sha256d.hash();
     const coinbaseDigest = Algorithms.sha256d.hash();
     const blockDigest = Algorithms.sha256d.hash();
@@ -85,59 +84,72 @@ const Manager = function(config, configMain) {
     if (typeof job === 'undefined' || job.jobId != jobId) {
       return shareError([21, 'job not found']);
     }
-    if (submission.extraNonce2.length / 2 !== _this.extraNonce2Size) {
-      return shareError([20, 'incorrect size of extranonce2']);
+    if (!utils.isHexString(submission.headerHash)) {
+      return shareError([20, 'invalid header submission [1]']);
     }
-    if (submission.nTime.length !== 8) {
-      return shareError([20, 'incorrect size of ntime']);
+    if (!utils.isHexString(submission.mixHash)) {
+      return shareError([20, 'invalid mixHash submission']);
     }
-    if (nTimeInt < job.rpcData.curtime || nTimeInt > submitTime + 7200) {
-      return shareError([20, 'ntime out of range']);
+    if (!utils.isHexString(submission.nonce)) {
+      return shareError([20, 'invalid nonce submission']);
     }
-    if (submission.nonce.length !== 8) {
+    if (submission.mixHash.length !== 64) {
+      return shareError([20, 'incorrect size of mixHash']);
+    }
+    if (submission.nonce.length !== 16) {
       return shareError([20, 'incorrect size of nonce']);
+    }
+    if (submission.nonce.indexOf(submission.extraNonce1.substring(0, 4)) !== 0) {
+      return shareError([24, 'nonce out of worker range']);
     }
     if (!addrPrimary) {
       return shareError([20, 'worker address isn\'t set properly']);
     }
-    if (!job.handleSubmissions([submission.extraNonce1, submission.extraNonce2, submission.nTime, submission.nonce])) {
+    if (!job.handleSubmissions([submission.extraNonce1, submission.nonce, submission.headerHash, submission.mixHash])) {
       return shareError([22, 'duplicate share']);
-    }
-
-    // Check for AsicBoost Support
-    let version = job.rpcData.version;
-    if (submission.asicboost && submission.versionBit !== undefined) {
-      const vBit = parseInt('0x' + submission.versionBit);
-      const vMask = parseInt('0x' + submission.versionMask);
-      if ((vBit & ~vMask) !== 0) {
-        return shareError([20, 'invalid version bit']);
-      }
-      version = (version & ~vMask) | (vBit & vMask);
     }
 
     // Establish Share Information
     let blockValid = false;
+    const version = job.rpcData.version;
     const extraNonce1Buffer = Buffer.from(submission.extraNonce1, 'hex');
-    const extraNonce2Buffer = Buffer.from(submission.extraNonce2, 'hex');
+    const nonceBuffer = utils.reverseBuffer(Buffer.from(submission.nonce, 'hex'));
+    const mixHashBuffer = Buffer.from(submission.mixHash, 'hex');
 
     // Generate Coinbase Buffer
-    const coinbaseBuffer = job.handleCoinbase(extraNonce1Buffer, extraNonce2Buffer);
+    const coinbaseBuffer = job.handleCoinbase(extraNonce1Buffer);
     const coinbaseHash = coinbaseDigest(coinbaseBuffer);
     const hashes = utils.convertHashToBuffer(job.rpcData.transactions);
     const transactions = [coinbaseHash].concat(hashes);
     const merkleRoot = fastRoot(transactions, utils.sha256d);
 
     // Start Generating Block Hash
-    const headerBuffer = job.handleHeader(version, merkleRoot, submission.nTime, submission.nonce);
-    const headerHash = headerDigest(headerBuffer, nTimeInt);
-    const headerBigInt = utils.bufferToBigInt(utils.reverseBuffer(headerHash));
+    const nTime = utils.packUInt32BE(job.rpcData.curtime).toString('hex');
+    const headerBuffer = job.handleHeader(version, merkleRoot, nTime);
+    const headerHashBuffer = utils.reverseBuffer(headerDigest(headerBuffer));
+    const headerHash = headerHashBuffer.toString('hex');
+
+    // Check if Generated Header Matches
+    if (submission.headerHash !== headerHash) {
+      return shareError([20, 'invalid header submission [2]']);
+    }
+
+    // Check Validity of Solution
+    const hashOutputBuffer = Buffer.alloc(32);
+    const isValid = hashDigest(headerHashBuffer, nonceBuffer, job.rpcData.height, mixHashBuffer, hashOutputBuffer);
+    const headerBigInt = utils.bufferToBigInt(hashOutputBuffer);
+
+    // Check if Submission is Valid Solution
+    if (!isValid) {
+      return shareError([20, 'submission is not valid']);
+    }
 
     // Calculate Share Difficulty
-    const shareMultiplier = Algorithms.sha256d.multiplier;
-    const shareDiff = Algorithms.sha256d.diff / Number(headerBigInt) * shareMultiplier;
-    const blockDiffAdjusted = job.difficulty * Algorithms.sha256d.multiplier;
-    const blockHash = utils.reverseBuffer(blockDigest(headerBuffer, submission.nTime)).toString('hex');
-    const blockHex = job.handleBlocks(headerBuffer, coinbaseBuffer).toString('hex');
+    const shareMultiplier = Algorithms.kawpow.multiplier;
+    const shareDiff = Algorithms.kawpow.diff / Number(headerBigInt) * shareMultiplier;
+    const blockDiffAdjusted = job.difficulty * Algorithms.kawpow.multiplier;
+    const blockHash = hashOutputBuffer.toString('hex');
+    const blockHex = job.handleBlocks(headerBuffer, coinbaseBuffer, nonceBuffer, mixHashBuffer).toString('hex');
 
     // Check if Share is Valid Block Candidate
     if (job.target >= headerBigInt) {

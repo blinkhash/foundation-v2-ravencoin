@@ -10,30 +10,30 @@ const Transactions = function(config) {
 
   // Mainnet Configuration
   this.configMainnet = {
-    bech32: 'bc',
+    bech32: '',
     bip32: {
       public: Buffer.from('0488B21E', 'hex').readUInt32LE(0),
       private: Buffer.from('0488ADE4', 'hex').readUInt32LE(0),
     },
-    peerMagic: 'f9beb4d9',
-    pubKeyHash: Buffer.from('00', 'hex').readUInt8(0),
-    scriptHash: Buffer.from('05', 'hex').readUInt8(0),
+    peerMagic: '5241564e',
+    pubKeyHash: Buffer.from('3C', 'hex').readUInt8(0),
+    scriptHash: Buffer.from('7A', 'hex').readUInt8(0),
     wif: Buffer.from('80', 'hex').readUInt8(0),
-    coin: 'btc',
+    coin: 'rvn',
   };
 
   // Testnet Configuration
   this.configTestnet = {
-    bech32: 'tb',
+    bech32: '',
     bip32: {
       public: Buffer.from('043587CF', 'hex').readUInt32LE(0),
       private: Buffer.from('04358394', 'hex').readUInt32LE(0),
     },
-    peerMagic: '0b110907',
+    peerMagic: '52564e54',
     pubKeyHash: Buffer.from('6F', 'hex').readUInt8(0),
     scriptHash: Buffer.from('C4', 'hex').readUInt8(0),
     wif: Buffer.from('EF', 'hex').readUInt8(0),
-    coin: 'btc',
+    coin: 'rvn',
   };
 
   // Calculate Generation Transaction
@@ -45,7 +45,7 @@ const Transactions = function(config) {
     const txInPrevOutIndex = Math.pow(2, 32) - 1;
     const txOutputBuffers = [];
 
-    let txVersion = 4;
+    let txVersion = 1;
     const network = !_this.config.settings.testnet ?
       _this.configMainnet :
       _this.configTestnet;
@@ -113,16 +113,6 @@ const Transactions = function(config) {
       utils.varIntBuffer(poolAddressScript.length),
       poolAddressScript
     ]));
-
-    // Handle Witness Commitment
-    if (rpcData.default_witness_commitment !== undefined) {
-      const witness_commitment = Buffer.from(rpcData.default_witness_commitment, 'hex');
-      txOutputBuffers.push(Buffer.concat([
-        utils.packUInt64LE(0),
-        utils.varIntBuffer(witness_commitment.length),
-        witness_commitment
-      ]));
-    }
 
     // Build Second Part of Generation Transaction
     const p2 = Buffer.concat([
