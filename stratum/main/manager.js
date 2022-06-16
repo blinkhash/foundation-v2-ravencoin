@@ -63,7 +63,6 @@ const Manager = function(config, configMain) {
     const hashDigest = Algorithms.kawpow.hash();
     const headerDigest = Algorithms.sha256d.hash();
     const coinbaseDigest = Algorithms.sha256d.hash();
-    const blockDigest = Algorithms.sha256d.hash();
 
     // Share is Invalid
     const shareError = function(error) {
