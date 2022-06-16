@@ -1,6 +1,6 @@
 {
   "name": "foundation-v2-ravencoin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A high performance Stratum pool-server written in Node.js",
   "main": "./exports.js",
   "keywords": [
@@ -30,7 +30,7 @@
     "clean": "eslint . --ext .js --ignore-pattern node_modules/",
     "clean:fix": "eslint . --ext .js --fix --ignore-pattern node_modules/",
     "test": "jest --coverage",
-    "deploy": "npm run clean:fix && npm run test"
+    "deploy": "npm install && npm run clean:fix && npm run test"
   },
   "contributors": [],
   "repository": {

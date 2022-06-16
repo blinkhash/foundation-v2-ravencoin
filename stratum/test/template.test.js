@@ -46,7 +46,7 @@ describe('Test template functionality', () => {
     const template = new Template(jobId.toString(16), configCopy, rpcDataCopy, extraNonce);
     expect(template.generation.length).toBe(2);
     expect(template.generation[0].slice(0, -5)).toStrictEqual(Buffer.from('01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0f5104', 'hex'));
-    expect(template.generation[1]).toStrictEqual(Buffer.from('0000000001902f5009000000001976a91459d584c2da3735f24af4ed3eb8e2abeb63fbffd688ac00000000', 'hex'));
+    expect(template.generation[1]).toStrictEqual(Buffer.from('0000000002902f5009000000001976a91459d584c2da3735f24af4ed3eb8e2abeb63fbffd688ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000', 'hex'));
   });
 
   test('Test coinbase serialization [1]', () => {
@@ -56,7 +56,7 @@ describe('Test template functionality', () => {
     const coinbase = template.handleCoinbase(extraNonce1, extraNonce2);
     expect(coinbase.slice(0, 44)).toStrictEqual(Buffer.from('01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0f5104', 'hex'));
     expect(coinbase.slice(49, 51)).toStrictEqual(Buffer.from('0100', 'hex'));
-    expect(coinbase.slice(51)).toStrictEqual(Buffer.from('00000001902f5009000000001976a91459d584c2da3735f24af4ed3eb8e2abeb63fbffd688ac00000000', 'hex'));
+    expect(coinbase.slice(51)).toStrictEqual(Buffer.from('00000002902f5009000000001976a91459d584c2da3735f24af4ed3eb8e2abeb63fbffd688ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf900000000', 'hex'));
   });
 
   test('Test coinbase serialization [2]', () => {

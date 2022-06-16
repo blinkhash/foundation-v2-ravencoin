@@ -114,6 +114,16 @@ const Transactions = function(config) {
       poolAddressScript
     ]));
 
+    // Handle Witness Commitment
+    if (rpcData.default_witness_commitment !== undefined) {
+      const witness_commitment = Buffer.from(rpcData.default_witness_commitment, 'hex');
+      txOutputBuffers.push(Buffer.concat([
+        utils.packUInt64LE(0),
+        utils.varIntBuffer(witness_commitment.length),
+        witness_commitment
+      ]));
+    }
+
     // Build Second Part of Generation Transaction
     const p2 = Buffer.concat([
       utils.packUInt32LE(txInSequence),

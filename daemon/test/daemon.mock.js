@@ -35,6 +35,7 @@ exports.getBlockTemplate = function() {
     'curtime': 1655318189,
     'bits': '2000df3b',
     'height': 1,
+    'default_witness_commitment': '6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9'
   };
 };
 
