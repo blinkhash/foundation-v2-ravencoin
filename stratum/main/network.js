@@ -48,7 +48,7 @@ const Network = function(config, configMain, authorizeFn) {
     // Send New Jobs to Clients
     Object.keys(_this.clients).forEach((clientId) => {
       const client = _this.clients[clientId];
-      const parameters = template.handleParameters(cleanJobs);
+      const parameters = template.handleParameters(client, cleanJobs);
       client.broadcastMiningJob(parameters);
     });
 

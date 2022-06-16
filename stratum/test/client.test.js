@@ -189,7 +189,7 @@ describe('Test client functionality', () => {
     const socket = mockSocket();
     const client = new Client(configCopy, socket, 0, () => {});
     client.socket.on('log', (text) => {
-      expect(text).toStrictEqual('{"id":null,"result":[[["mining.set_difficulty",0],["mining.notify",0]],"extraNonce1","extraNonce2Size"],"error":null}\n');
+      expect(text).toStrictEqual('{"id":null,"result":[null,"extraNonce1"],"error":null}\n');
       done();
     });
     client.on('client.subscription', (params, callback) => callback(null, 'extraNonce1', 'extraNonce2Size'));
@@ -246,18 +246,10 @@ describe('Test client functionality', () => {
     const socket = mockSocket();
     const client = new Client(configCopy, socket, 0, () => {});
     client.socket.on('log', (text) => {
-      expect(text).toStrictEqual('{"id":null,"result":{"version-rolling":true,"version-rolling.mask":"1fffe000"},"error":null}\n');
+      expect(text).toStrictEqual('{"id":null,"result":{"version-rolling":false},"error":null}\n');
       done();
     });
     client.validateMessages({ id: null, method: 'mining.configure' });
-    expect(client.asicboost).toBe(true);
-    expect(client.versionMask).toBe('1fffe000');
-  });
-
-  test('Test client message validation [7]', () => {
-    const socket = mockSocket();
-    const client = new Client(configCopy, socket, 0, () => {});
-    client.validateMessages({ id: null, method: 'mining.multi_version', params: [1] });
     expect(client.asicboost).toBe(false);
     expect(client.versionMask).toBe('00000000');
   });
@@ -266,8 +258,8 @@ describe('Test client functionality', () => {
     const socket = mockSocket();
     const client = new Client(configCopy, socket, 0, () => {});
     client.validateMessages({ id: null, method: 'mining.multi_version', params: [4] });
-    expect(client.asicboost).toBe(true);
-    expect(client.versionMask).toBe('1fffe000');
+    expect(client.asicboost).toBe(false);
+    expect(client.versionMask).toBe('00000000');
   });
 
   test('Test client message validation [9]', (done) => {
@@ -386,7 +378,7 @@ describe('Test client functionality', () => {
     const socket = mockSocket();
     const client = new Client(configCopy, socket, 0, () => {});
     client.socket.on('log', (text) => {
-      expect(text).toStrictEqual('{"id":null,"method":"mining.set_difficulty","params":[8]}\n');
+      expect(text).toStrictEqual('{"id":null,"method":"mining.set_target","params":["000000001fe00000000000000000000000000000000000000000000000000000"]}\n');
       done();
     });
     expect(client.broadcastDifficulty(0)).toBe(false);
@@ -397,7 +389,7 @@ describe('Test client functionality', () => {
     const socket = mockSocket();
     const client = new Client(configCopy, socket, 0, () => {});
     client.socket.on('log', (text) => {
-      expect(text).toStrictEqual('{"id":null,"method":"mining.notify","params":[0,0,0,0]}\n');
+      expect(text).toStrictEqual('{"id":null,"method":"mining.notify","params":[0,0,0,"00000000000000000000000000000000000000000000000000000000Infinity"]}\n');
       done();
     });
     client.broadcastMiningJob([0,0,0,0]);
@@ -423,8 +415,8 @@ describe('Test client functionality', () => {
     client.socket.on('log', (text) => {
       response.push(text);
       if (response.length === 2) {
-        expect(response[0]).toStrictEqual('{"id":null,"method":"mining.set_difficulty","params":[8]}\n');
-        expect(response[1]).toStrictEqual('{"id":null,"method":"mining.notify","params":[0,0,0,0]}\n');
+        expect(response[0]).toStrictEqual('{"id":null,"method":"mining.set_target","params":["000000001fe00000000000000000000000000000000000000000000000000000"]}\n');
+        expect(response[1]).toStrictEqual('{"id":null,"method":"mining.notify","params":[0,0,0,"000000001fe00000000000000000000000000000000000000000000000000000"]}\n');
         done();
       }
     });
@@ -436,7 +428,7 @@ describe('Test client functionality', () => {
     const client = new Client(configCopy, socket, 0, () => {});
     client.pendingDifficulty = 0;
     client.socket.on('log', (text) => {
-      expect(text).toStrictEqual('{"id":null,"method":"mining.notify","params":[0,0,0,0]}\n');
+      expect(text).toStrictEqual('{"id":null,"method":"mining.notify","params":[0,0,0,"00000000000000000000000000000000000000000000000000000000Infinity"]}\n');
       done();
     });
     client.broadcastMiningJob([0,0,0,0]);
