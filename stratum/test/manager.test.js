@@ -1,10 +1,44 @@
 const Manager = require('../main/manager');
 const config = require('../../configs/example');
 const configMain = require('../../configs/main');
+const events = require('events');
 const testdata = require('../../daemon/test/daemon.mock');
 
 config.primary.address = 'RHUC17zAVjNqXDtkqwLPRvQ2XgoRZsXeeG';
 config.primary.recipients = [];
+
+////////////////////////////////////////////////////////////////////////////////
+
+function mockSocket() {
+  const socket = new events.EventEmitter();
+  socket.remoteAddress = '127.0.0.1',
+  socket.destroy = () => {};
+  socket.setEncoding = () => {};
+  socket.setKeepAlive = () => {};
+  socket.write = (data) => {
+    socket.emit('log', data);
+  };
+  return socket;
+}
+
+function mockClient() {
+  const socket = mockSocket();
+  const client = new events.EventEmitter();
+  client.id = 'test';
+  client.addrPrimary = '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2';
+  client.addrAuxiliary = '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2';
+  client.previousDifficulty = 0;
+  client.difficulty = 1,
+  client.extraNonce1 = 0,
+  client.socket = socket;
+  client.socket.localPort = 3002;
+  client.sendLabel = () => {
+    return 'client [example]';
+  };
+  client.broadcastMiningJob = () => {};
+  client.broadcastDifficulty = () => {};
+  return client;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -61,7 +95,8 @@ describe('Test manager functionality', () => {
       headerHash: '00',
       mixHash: '00',
     };
-    const response = manager.handleShare(0, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(0, client, submission);
     expect(response.error[0]).toBe(21);
     expect(response.error[1]).toBe('job not found');
   });
@@ -75,7 +110,8 @@ describe('Test manager functionality', () => {
       headerHash: 'xxxx',
       mixHash: '00',
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(20);
     expect(response.error[1]).toBe('invalid header submission [1]');
   });
@@ -89,7 +125,8 @@ describe('Test manager functionality', () => {
       headerHash: '00',
       mixHash: 'xxxx',
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(20);
     expect(response.error[1]).toBe('invalid mixHash submission');
   });
@@ -103,7 +140,8 @@ describe('Test manager functionality', () => {
       headerHash: '00',
       mixHash: '00',
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(20);
     expect(response.error[1]).toBe('invalid nonce submission');
   });
@@ -117,7 +155,8 @@ describe('Test manager functionality', () => {
       headerHash: '00',
       mixHash: '00',
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(20);
     expect(response.error[1]).toBe('invalid nonce submission');
   });
@@ -131,7 +170,8 @@ describe('Test manager functionality', () => {
       headerHash: '4c3ec261b8b84f36ffadad0f07b007748866d422c1c8006ccce526ad67088fe7',
       mixHash: '9d82ca253ae7011b8f9f2e12cba5a4373134197b89b5c9ecf6913f3c7d0bc45caa'
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(20);
     expect(response.error[1]).toBe('incorrect size of mixHash');
   });
@@ -145,7 +185,8 @@ describe('Test manager functionality', () => {
       headerHash: '4c3ec261b8b84f36ffadad0f07b007748866d422c1c8006ccce526ad67088fe7',
       mixHash: '9d82ca253ae7011b8f9f2e12cba5a4373134197b89b5c9ecf6913f3c7d0bc45c'
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(20);
     expect(response.error[1]).toBe('incorrect size of nonce');
   });
@@ -159,7 +200,8 @@ describe('Test manager functionality', () => {
       headerHash: '4c3ec261b8b84f36ffadad0f07b007748866d422c1c8006ccce526ad67088fe7',
       mixHash: '9d82ca253ae7011b8f9f2e12cba5a4373134197b89b5c9ecf6913f3c7d0bc45c'
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(24);
     expect(response.error[1]).toBe('nonce out of worker range');
   });
@@ -173,7 +215,9 @@ describe('Test manager functionality', () => {
       headerHash: 'a940277ad64417e5d645d884522f66d733cfc91ab0a87b32d6400ed28c6b8f2e',
       mixHash: 'ab1957f31544c9a133eebccdd30dfefc3deda8ab3015aa12aac8b164346152ab'
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', null, null, submission);
+    const client = mockClient();
+    client.addrPrimary = null;
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(20);
     expect(response.error[1]).toBe('worker address isn\'t set properly');
   });
@@ -187,8 +231,9 @@ describe('Test manager functionality', () => {
       headerHash: '4c3ec261b8b84f36ffadad0f07b007748866d422c1c8006ccce526ad67088fe7',
       mixHash: '9d82ca253ae7011b8f9f2e12cba5a4373134197b89b5c9ecf6913f3c7d0bc45c'
     };
-    manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    manager.handleShare(1, client, submission);
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(22);
     expect(response.error[1]).toBe('duplicate share');
   });
@@ -202,7 +247,8 @@ describe('Test manager functionality', () => {
       headerHash: '3c3ec261b8b84f36ffadad0f07b007748866d422c1c8006ccce526ad67088fe7',
       mixHash: '9d82ca253ae7011b8f9f2e12cba5a4373134197b89b5c9ecf6913f3c7d0bc45c'
     };
-    const response = manager.handleShare(1, 0, 0, 'ip_addr', 'port', 'addr1', 'addr2', submission);
+    const client = mockClient();
+    const response = manager.handleShare(1, client, submission);
     expect(response.error[0]).toBe(20);
     expect(response.error[1]).toBe('invalid header submission [2]');
   });
