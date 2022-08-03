@@ -18,7 +18,7 @@ const Template = function(jobId, config, rpcData, placeholder) {
   // Template Variables
   this.target = _this.rpcData.target ? BigInt(`0x${ _this.rpcData.target }`) : utils.bigIntFromBitsHex(_this.rpcData.bits);
   this.difficulty = parseFloat((Algorithms.kawpow.diff / Number(_this.target)).toFixed(9));
-  this.generation = new Transactions(config).handleGeneration(rpcData, placeholder);
+  this.generation = new Transactions(config, rpcData).handleGeneration(placeholder);
 
   // Manage Serializing Block Headers
   this.handleHeader = function(version, merkleRoot, nTime) {
