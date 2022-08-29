@@ -52,6 +52,7 @@ config.primary.address = '[address]';
 config.primary.coin = {};
 config.primary.coin.name = 'Ravencoin';
 config.primary.coin.symbol = 'RVN';
+config.primary.coin.algorithm = 'kawpow';
 
 // Daemon Configuration
 config.primary.daemons = [];
